@@ -1,0 +1,2 @@
+# futrtalk
+futrtalk install script
