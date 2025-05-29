@@ -1,0 +1,74 @@
+#!/bin/bash
+set -e
+
+DOMAIN="${CERTBOT_DOMAIN}"
+EMAIL="${CERTBOT_EMAIL}"
+OPTIONS="${CERTBOT_OPTIONS}"
+
+WEB_DOMAIN=web.${CERTBOT_DOMAIN}
+DASH_DOMAIN=dash.${CERTBOT_DOMAIN}
+API_DOMAIN=api.${CERTBOT_DOMAIN}
+IM_DOMAIN=im.${CERTBOT_DOMAIN}
+WS_DOMAIN=ws.${CERTBOT_DOMAIN}
+JSWS_DOMAIN=jsws.${CERTBOT_DOMAIN}
+MINIO_DOMAIN=minio.${CERTBOT_DOMAIN}
+# Check if the certificate already exists
+if [ -f "/etc/letsencrypt/renewal/${WEB_DOMAIN}.conf" ]; then
+  echo "Certificate exists. Attempting to renew..."
+  certbot renew --noninteractive --cert-name ${WEB_DOMAIN} --webroot --webroot-path=/var/www/html --email ${EMAIL} --agree-tos --no-eff-email ${OPTIONS}
+else
+  echo "Certificate does not exist. Obtaining a new certificate..."
+  certbot certonly --noninteractive --webroot --webroot-path=/var/www/html --email ${EMAIL} --agree-tos --no-eff-email -d ${WEB_DOMAIN} ${OPTIONS}
+fi
+
+if [ -f "/etc/letsencrypt/renewal/${DASH_DOMAIN}.conf" ]; then
+  echo "Certificate exists. Attempting to renew..."
+  certbot renew --noninteractive --cert-name ${DASH_DOMAIN} --webroot --webroot-path=/var/www/html --email ${EMAIL} --agree-tos --no-eff-email ${OPTIONS}
+else
+  echo "Certificate does not exist. Obtaining a new certificate..."
+  certbot certonly --noninteractive --webroot --webroot-path=/var/www/html --email ${EMAIL} --agree-tos --no-eff-email -d ${DASH_DOMAIN} ${OPTIONS}
+fi
+
+if [ -f "/etc/letsencrypt/renewal/${API_DOMAIN}.conf" ]; then
+  echo "Certificate exists. Attempting to renew..."
+  certbot renew --noninteractive --cert-name ${API_DOMAIN} --webroot --webroot-path=/var/www/html --email ${EMAIL} --agree-tos --no-eff-email ${OPTIONS}
+else
+  echo "Certificate does not exist. Obtaining a new certificate..."
+  certbot certonly --noninteractive --webroot --webroot-path=/var/www/html --email ${EMAIL} --agree-tos --no-eff-email -d ${API_DOMAIN} ${OPTIONS}
+fi
+
+if [ -f "/etc/letsencrypt/renewal/${IM_DOMAIN}.conf" ]; then
+  echo "Certificate exists. Attempting to renew..."
+  certbot renew --noninteractive --cert-name ${IM_DOMAIN} --webroot --webroot-path=/var/www/html --email ${EMAIL} --agree-tos --no-eff-email ${OPTIONS}
+else
+  echo "Certificate does not exist. Obtaining a new certificate..."
+  certbot certonly --noninteractive --webroot --webroot-path=/var/www/html --email ${EMAIL} --agree-tos --no-eff-email -d ${IM_DOMAIN} ${OPTIONS}
+fi
+
+if [ -f "/etc/letsencrypt/renewal/${WS_DOMAIN}.conf" ]; then
+  echo "Certificate exists. Attempting to renew..."
+  certbot renew --noninteractive --cert-name ${WS_DOMAIN} --webroot --webroot-path=/var/www/html --email ${EMAIL} --agree-tos --no-eff-email ${OPTIONS}
+else
+  echo "Certificate does not exist. Obtaining a new certificate..."
+  certbot certonly --noninteractive --webroot --webroot-path=/var/www/html --email ${EMAIL} --agree-tos --no-eff-email -d ${WS_DOMAIN} ${OPTIONS}
+fi
+
+if [ -f "/etc/letsencrypt/renewal/${JSWS_DOMAIN}.conf" ]; then
+  echo "Certificate exists. Attempting to renew..."
+  certbot renew --noninteractive --cert-name ${JSWS_DOMAIN} --webroot --webroot-path=/var/www/html --email ${EMAIL} --agree-tos --no-eff-email ${OPTIONS}
+else
+  echo "Certificate does not exist. Obtaining a new certificate..."
+  certbot certonly --noninteractive --webroot --webroot-path=/var/www/html --email ${EMAIL} --agree-tos --no-eff-email -d ${JSWS_DOMAIN} ${OPTIONS}
+fi
+
+if [ -f "/etc/letsencrypt/renewal/${MINIO_DOMAIN}.conf" ]; then
+  echo "Certificate exists. Attempting to renew..."
+  certbot renew --noninteractive --cert-name ${MINIO_DOMAIN} --webroot --webroot-path=/var/www/html --email ${EMAIL} --agree-tos --no-eff-email ${OPTIONS}
+else
+  echo "Certificate does not exist. Obtaining a new certificate..."
+  certbot certonly --noninteractive --webroot --webroot-path=/var/www/html --email ${EMAIL} --agree-tos --no-eff-email -d ${MINIO_DOMAIN} ${OPTIONS}
+fi
+
+echo "Certificate operation successful"
+# Note: Nginx reload should be handled outside this container
+echo "Please ensure to reload Nginx to apply any certificate changes."

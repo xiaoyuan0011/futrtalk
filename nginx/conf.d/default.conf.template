@@ -1,0 +1,115 @@
+# Please do not directly edit this file. Instead, modify the .env variables related to NGINX configuration.
+
+server {
+    listen ${NGINX_PORT};
+    server_name dash.${NGINX_SERVER_NAME};
+
+
+    location / {
+      proxy_pass http://futrtalk-dashboard:80;
+      include proxy.conf;
+    }
+
+    # placeholder for acme challenge location
+    ${ACME_CHALLENGE_LOCATION}
+
+    # placeholder for https config defined in https.conf.template
+    ${DASH_HTTPS_CONFIG}
+}
+
+server {
+    listen ${NGINX_PORT};
+    server_name web.${NGINX_SERVER_NAME};
+
+
+    location / {
+      proxy_pass http://futrtalk-web:80;
+      include proxy.conf;
+    }
+
+    # placeholder for acme challenge location
+    ${ACME_CHALLENGE_LOCATION}
+
+    # placeholder for https config defined in https.conf.template
+    ${WEB_HTTPS_CONFIG}
+}
+server {
+    listen ${NGINX_PORT};
+    server_name api.${NGINX_SERVER_NAME};
+
+
+    location / {
+      proxy_pass http://futrtalk-server:10010;
+      include proxy.conf;      
+    }
+
+    # placeholder for acme challenge location
+    ${ACME_CHALLENGE_LOCATION}
+
+    # placeholder for https config defined in https.conf.template
+    ${API_HTTPS_CONFIG}
+}
+server {
+    listen ${NGINX_PORT};
+    server_name minio.${NGINX_SERVER_NAME};
+
+
+    location / {
+      proxy_pass http://minio:9000;
+      include proxy.conf;      
+    }
+
+    # placeholder for acme challenge location
+    ${ACME_CHALLENGE_LOCATION}
+
+    # placeholder for https config defined in https.conf.template
+    ${API_HTTPS_CONFIG}
+}
+server {
+    listen ${NGINX_PORT};
+    server_name im.${NGINX_SERVER_NAME};
+
+
+    location / {
+      proxy_pass http://futrtalkim-server:10002;
+      include proxy.conf;
+    }
+
+    # placeholder for acme challenge location
+    ${ACME_CHALLENGE_LOCATION}
+
+    # placeholder for https config defined in https.conf.template
+    ${IM_HTTPS_CONFIG}
+}
+server {
+    listen ${NGINX_PORT};
+    server_name ws.${NGINX_SERVER_NAME};
+
+
+    location / {
+      proxy_pass http://futrtalkim-server:10001;
+      include ws.conf;
+    }
+
+    # placeholder for acme challenge location
+    ${ACME_CHALLENGE_LOCATION}
+
+    # placeholder for https config defined in https.conf.template
+    ${WS_HTTPS_CONFIG}
+}
+server {
+    listen ${NGINX_PORT};
+    server_name jsws.${NGINX_SERVER_NAME};
+
+
+    location / {
+      proxy_pass http://futrtalk-jssdk:10003;
+      include ws.conf;
+    }
+
+    # placeholder for acme challenge location
+    ${ACME_CHALLENGE_LOCATION}
+
+    # placeholder for https config defined in https.conf.template
+    ${JSWS_HTTPS_CONFIG}
+}

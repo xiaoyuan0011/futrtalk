@@ -1,0 +1,10 @@
+# Please do not directly edit this file. Instead, modify the .env variables related to NGINX configuration.
+
+# 配置WebSocket连接升级
+proxy_http_version 1.1;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection 'upgrade';
+proxy_set_header Host $host;
+
+# 设置代理超时
+proxy_read_timeout 86400;
