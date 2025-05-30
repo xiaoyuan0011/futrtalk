@@ -19,67 +19,67 @@ services:
     command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     restart: always
     ports:
-      - "${MYSQL_PORT}:3306"
+      - "13306:3306"
     environment:
-      - MYSQL_ROOT_PASSWORD=${Super_PWD}
-      - MYSQL_DATABASE=${DB_NAME}
-      - MYSQL_USER=${DB_USER}
+      - MYSQL_ROOT_PASSWORD=${ROOT_PWD}
+      - MYSQL_DATABASE=fultrtalk
+      - MYSQL_USER=fultrtalk
       - MYSQL_PASSWORD=${DB_PWD}
     volumes:
-      - ${DATA_DIR}/components/mysql:/var/lib/mysql
+      - ./DATA/components/mysql:/var/lib/mysql
       - /etc/localtime:/etc/localtime
     networks:
       - futrtalkIM
 
   mongo:
-    image: "${MONGO_IMAGE}"
+    image: mongo:6.0.2
     logging: *default-logging
     container_name: mongo
     ports:
-      - "${MONGO_OUT_PORT}:27017"
+      - "28017:27017"
     command: ["/bin/bash", "-c", "/docker-entrypoint-initdb.d/mongo-init.sh; docker-entrypoint.sh mongod --wiredTigerCacheSizeGB 1 --auth"]
     volumes:
-      - "${DATA_DIR}/components/mongodb/data/db:/data/db"
-      - "${DATA_DIR}/components/mongodb/data/logs:/data/logs"
-      - "${DATA_DIR}/components/mongodb/data/conf:/etc/mongo"
+      - "./DATA/components/mongodb/data/db:/data/db"
+      - "./DATA/components/mongodb/data/logs:/data/logs"
+      - "./DATA/components/mongodb/data/conf:/etc/mongo"
       - "./scripts/mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh:ro"
     environment:
       - TZ=Asia/Shanghai
       - wiredTigerCacheSizeGB=1
       - MONGO_INITDB_ROOT_USERNAME=root
-      - MONGO_INITDB_ROOT_PASSWORD=${Super_PWD}
-      - MONGO_INITDB_DATABASE=${DB_NAME}
-      - MONGO_OPENIM_USERNAME=${DB_USER}
+      - MONGO_INITDB_ROOT_PASSWORD=${ROOT_PWD}
+      - MONGO_INITDB_DATABASE=fultrtalk
+      - MONGO_OPENIM_USERNAME=fultrtalk
       - MONGO_OPENIM_PASSWORD=${DB_PWD}
     restart: always
     networks:
       - futrtalkIM
 
   redis:
-    image: "${REDIS_IMAGE}"
+    image: redis:7.0.0
     logging: *default-logging
     container_name: redis
     ports:
-      - "${REDIS_OUT_PORT}:6379"
+      - "16379:6379"
     volumes:
-      - "${DATA_DIR}/components/redis/data:/data"
-      - "${DATA_DIR}/components/redis/config/redis.conf:/usr/local/redis/config/redis.conf"
+      - "./DATA/components/redis/data:/data"
+      - "./DATA/components/redis/config/redis.conf:/usr/local/redis/config/redis.conf"
     environment:
       TZ: Asia/Shanghai
     restart: always
     sysctls:
       net.core.somaxconn: 1024
-    command: [ "redis-server", "/usr/local/redis/config/redis.conf", "--requirepass", "${Super_PWD}", "--appendonly", "yes" ]
+    command: [ "redis-server", "/usr/local/redis/config/redis.conf", "--requirepass", "${ROOT_PWD}", "--appendonly", "yes" ]
     networks:
       - futrtalkIM
 
   etcd:
-    image: "${ETCD_IMAGE}"
+    image: quay.io/coreos/etcd:v3.5.13
     logging: *default-logging
     container_name: etcd
     ports:
-      - "${ETCD_OUT_PORT}:2379"
-      - "${ETCD_PEER_PORT}:2380"
+      - "12379:2379"
+      - "12380:2380"
     environment:
       - ETCD_NAME=s1
       - ETCD_DATA_DIR=/etcd-data
@@ -95,16 +95,16 @@ services:
       - futrtalkIM
 
   kafka:
-    image: "${KAFKA_IMAGE}"
+    image: bitnami/kafka:3.5.1
     logging: *default-logging
     container_name: kafka
     user: root
     restart: always
     ports:
-      - "${KAFKA_OUT_PORT}:9094"
+      - "19094:9094"
     volumes:
       - ./scripts/create-topic.sh:/opt/bitnami/kafka/create-topic.sh
-      - "${DATA_DIR}/components/kafka:/bitnami/kafka"
+      - "./DATA/components/kafka:/bitnami/kafka"
     command: >
       bash -c "/opt/bitnami/scripts/kafka/run.sh & /opt/bitnami/kafka/create-topic.sh; wait"
     environment:
@@ -120,18 +120,18 @@ services:
       - futrtalkIM
 
   minio:
-    image: "${MINIO_IMAGE}"
+    image: minio/minio:RELEASE.2024-01-11T07-46-16Z
     logging: *default-logging
     ports:
-      - "${MINIO_PORT}:9000"
-      - "${MINIO_CONSOLE_PORT}:9090"
+      - "10005:9000"
+      - "10004:9090"
     container_name: minio
     volumes:
-      - "${DATA_DIR}/components/mnt/data:/data"
-      - "${DATA_DIR}/components/mnt/config:/root/.minio"
+      - "./DATA/components/mnt/data:/data"
+      - "./DATA/components/mnt/config:/root/.minio"
     environment:
       TZ: Asia/Shanghai
-      MINIO_ROOT_USER: "${DB_USER}"
+      MINIO_ROOT_USER: "fultrtalk"
       MINIO_ROOT_PASSWORD: "${DB_PWD}"
     restart: always
     command: minio server /data --console-address ':9090'
@@ -139,38 +139,38 @@ services:
       - futrtalkIM
 
   prometheus:
-    image: ${PROMETHEUS_IMAGE}
+    image: prom/prometheus:v2.51.2 
     logging: *default-logging
     container_name: prometheus
     hostname: prometheus
     restart: always
     ports:
-      - "${PROMETHEUS_PORT}:9090"
+      - "19090:9090"
     networks:
       - futrtalkIM
 
   alertmanager:
-    image: ${ALERTMANAGER_IMAGE}
+    image: prom/alertmanager:v0.27.0
     logging: *default-logging
     container_name: alertmanager
     hostname: alertmanager
     restart: always
     ports:
-      - "${ALERT_MANAGER_PORT}:9093"
+      - "19093:9093"
     networks:
       - futrtalkIM
 
   grafana:
-    image: ${GRAFANA_IMAGE}
+    image: grafana/grafana:10.4.2
     logging: *default-logging
     container_name: grafana
     hostname: grafana
     user: root
     restart: always
     ports:
-      - "${GRAFANA_PORT}:3000"
+      - "14000:3000"
     volumes:
-      - "${DATA_DIR}/components/grafana:/var/lib/grafana"
+      - "./DATA/components/grafana:/var/lib/grafana"
     environment:
       - GF_SECURITY_ALLOW_EMBEDDING=true
       - GF_SESSION_COOKIE_SAMESITE=none
@@ -181,18 +181,18 @@ services:
       - futrtalkIM
 
   node-exporter:
-    image: ${NODE_EXPORTER_IMAGE}
+    image: prom/node-exporter:v1.7.0
     logging: *default-logging
     container_name: node-exporter
     hostname: node-exporter
     restart: always
     ports:
-      - "${NODE_EXPORTER_PORT}:9100"
+      - "19100:9100"
     networks:
       - futrtalkIM
 
   futrtalk-im-server:
-    image: ${FUTRTALKIM_SERVER_IMAGE}
+    image: sqzxcv/futrtalk_im_server:latest
     logging:
       driver: json-file
       options:
@@ -200,8 +200,8 @@ services:
         max-file: "30"
     container_name: futrtalkim-server
     ports:
-      - "${FUTRTALKIM_MSG_GATEWAY_PORT}:10001"
-      - "${FUTRTALKIM_API_PORT}:10002"
+      - "10001:10001"
+      - "10002:10002"
       - "10110:10110"
       - "10120:10120"
       - "10130:10130"
@@ -217,24 +217,24 @@ services:
       timeout: 60s
       retries: 10
     environment:
-      - IMENV_MONGODB_ADDRESS=${MONGO_ADDRESS}
-      - IMENV_MONGODB_DATABASE=${DB_NAME}
-      - IMENV_MONGODB_USERNAME=${DB_USER}
+      - IMENV_MONGODB_ADDRESS=mongo:27017
+      - IMENV_MONGODB_DATABASE=fultrtalk
+      - IMENV_MONGODB_USERNAME=fultrtalk
       - IMENV_MONGODB_PASSWORD=${DB_PWD}
-      - IMENV_KAFKA_ADDRESS=${KAFKA_ADDRESS}
-      - IMENV_DISCOVERY_ETCD_ROOTDIRECTORY=${DB_NAME}
-      - IMENV_DISCOVERY_ETCD_ADDRESS=${ETCD_ADDRESS}
-      - IMENV_REDIS_ADDRESS=${REDIS_ADDRESS}
-      - IMENV_REDIS_PASSWORD=${Super_PWD}
-      - IMENV_MINIO_INTERNALADDRESS=${MINIO_INTERNAL_ADDRESS}
-      - IMENV_MINIO_EXTERNALADDRESS=${MINIO_EXTERNAL_ADDRESS}
-      - IMENV_MINIO_ACCESSKEYID=${DB_USER}
+      - IMENV_KAFKA_ADDRESS=kafka:9094
+      - IMENV_DISCOVERY_ETCD_ROOTDIRECTORY=fultrtalk
+      - IMENV_DISCOVERY_ETCD_ADDRESS=etcd:2379
+      - IMENV_REDIS_ADDRESS=redis:6379
+      - IMENV_REDIS_PASSWORD=${ROOT_PWD}
+      - IMENV_MINIO_INTERNALADDRESS=minio:9000
+      - IMENV_MINIO_EXTERNALADDRESS=${HTTP_TYPE}://minio.${HOST_DOMAIN}
+      - IMENV_MINIO_ACCESSKEYID=fultrtalk
       - IMENV_MINIO_SECRETACCESSKEY=${DB_PWD}
-      - IMENV_SHARE_IMADMINUSERID=futrtalk,${ADMIN_USER_ID}
+      - IMENV_SHARE_IMADMINUSERID=futrtalk,fultrtalk_u_asdb_1,fultrtalk_u_asdb_2
       - IMENV_SHARE_SECRET=${Super_PWD}
-      - IMENV_LOG_ISSTDOUT=${LOG_IS_STDOUT}
-      - IMENV_LOG_REMAINLOGLEVEL=${LOG_LEVEL}
-      - IMENV_OPENIM_API_PROMETHEUS_GRAFANAURL=${GRAFANA_URL}
+      - IMENV_LOG_ISSTDOUT=true
+      - IMENV_LOG_REMAINLOGLEVEL=3
+      - IMENV_OPENIM_API_PROMETHEUS_GRAFANAURL=${HTTP_TYPE}://${HOST_DOMAIN}:14000
       - IMENV_OPENIM_MSGGATEWAY_RPC_REGISTERIP=${RPC_REGISTER_IP}
       - IMENV_OPENIM_PUSH_RPC_REGISTERIP=${RPC_REGISTER_IP}
       - IMENV_OPENIM_RPC_AUTH_RPC_REGISTERIP=${RPC_REGISTER_IP}
@@ -253,7 +253,7 @@ services:
       - IMENV_OPENIM_RPC_MSG_RPC_PORTS=10130
       - IMENV_OPENIM_RPC_THIRD_RPC_PORTS=10190
       - IMENV_OPENIM_RPC_USER_RPC_PORTS=10110
-      - IMENV_WEBHOOKS_URL=${WEBHOOKS_URL}
+      - IMENV_WEBHOOKS_URL=${HTTP_TYPE}://api.${HOST_DOMAIN}/api/imcallback
       - IMENV_WEBHOOKS_AFTERSENDGROUPMSG_ENABLE=true
       - IMENV_WEBHOOKS_AFTERSENDGROUPMSG_TIMEOUT=20
       - IMENV_NOTIFICATION_GROUPCREATED_ISSENDMSG=true
@@ -263,14 +263,19 @@ services:
       - IMENV_WEBHOOKS_BEFOREOFFLINEPUSH_TIMEOUT=20
       - IMENV_OPENIM_MSGGATEWAY_MULTILOGINPOLICY=3
     restart: always
+    depends_on:
+      - mysql
+      - mongo
+      - redis
+      - kafka
+      - minio
     networks:
       - futrtalkIM
 
-
-    
+  
   
   futrtalk-server:
-    image: ${FUTRTALK_SERVER_IMAGE}
+    image: sqzxcv/futrtalk-server:latest
     logging: *default-logging
     container_name: futrtalk-server
     ports:
@@ -278,36 +283,36 @@ services:
     restart: always
     environment:
       - FUTRTALKENV_MYSQL_IP=${MYSQL_IP}
-      - FUTRTALKENV_MYSQL_PORT=${MYSQL_PORT}
-      - FUTRTALKENV_MYSQL_USERNAME=${DB_USER}
+      - FUTRTALKENV_MYSQL_PORT=13306
+      - FUTRTALKENV_MYSQL_USERNAME=fultrtalk
       - FUTRTALKENV_MYSQL_PASSWORD=${DB_PWD}
-      - FUTRTALKENV_MYSQL_DATABASE=${DB_NAME}
+      - FUTRTALKENV_MYSQL_DATABASE=fultrtalk
       - FUTRTALKENV_REDIS_IP=${REDIS_IP}
-      - FUTRTALKENV_REDIS_PORT=${REDIS_OUT_PORT}
-      - FUTRTALKENV_REDIS_PASSWORD=${Super_PWD}
-      - FUTRTALKENV_REDIS_DATABASE=${REDIS_DATABASE}
+      - FUTRTALKENV_REDIS_PORT=16379
+      - FUTRTALKENV_REDIS_PASSWORD=${ROOT_PWD}
+      - FUTRTALKENV_REDIS_DATABASE=0
       - FUTRTALKENV_MINIO_IP=${MINIO_IP}
-      - FUTRTALKENV_MINIO_PORT=${MINIO_PORT}
-      - FUTRTALKENV_MINIO_ACCESS_KEY_ID=${DB_USER}
+      - FUTRTALKENV_MINIO_PORT=10005
+      - FUTRTALKENV_MINIO_ACCESS_KEY_ID=fultrtalk
       - FUTRTALKENV_MINIO_SECRET_ACCESS_KEY=${DB_PWD}
       - FUTRTALKENV_MINIO_BUCKET=futrtalk
       - FUTRTALKENV_MINIO_APP_BUCKET=futrtalkapp
       - FUTRTALKENV_MINIO_LOCATION=us-east-1
-      - FUTRTALKENV_MINIO_PUBLIC_URL=${MINIO_EXTERNAL_ADDRESS}
+      - FUTRTALKENV_MINIO_PUBLIC_URL=${HTTP_TYPE}://minio.${HOST_DOMAIN}      
+      - FUTRTALKENV_OPENIM_SECRET=${Super_PWD}
+      - FUTRTALKENV_OPENIM_IP=${FUTRTALKIM_IP}
+      - FUTRTALKENV_OPENIM_API_PORT=10002
+      - FUTRTALKENV_OPENIM_PLATFORM_ID=5
+      - FUTRTALKENV_OPENIM_ADMIN_ID=futrtalk
+      - FUTRTALKENV_ETCD_ADDRESS=etcd:2379
+      - FUTRTALKENV_ETCD_ROOTDIRECTORY=fultrtalk
+      - FUTRTALKENV_SUPER_ADMIN=${SUPER_ADMIN}
       - FUTRTALKENV_EMAIL_HOST=${EMAIL_SMTP_ADDRESS}
       - FUTRTALKENV_EMAIL_PORT=${EMAIL_PORT}
       - FUTRTALKENV_EMAIL_FROM=${EMAIL_SEND_ADDRESS}
       - FUTRTALKENV_EMAIL_NICKNAME=${EMAIL_SEND_NICK_NAME}
       - FUTRTALKENV_EMAIL_PASSWORD=${EMAL_STMP_PASSWORD}
-      - FUTRTALKENV_EMAIL_SMTP_SSL=${EMAIL_SMTP_SSL}
-      - FUTRTALKENV_OPENIM_SECRET=${Super_PWD}
-      - FUTRTALKENV_OPENIM_IP=${FUTRTALKIM_IP}
-      - FUTRTALKENV_OPENIM_API_PORT=${FUTRTALKIM_API_PORT}
-      - FUTRTALKENV_OPENIM_PLATFORM_ID=${FUTRTALKIM_PLATFORM_ID}
-      - FUTRTALKENV_OPENIM_ADMIN_ID=${FUTRTALKIM_ADMIN_ID}
-      - FUTRTALKENV_ETCD_ADDRESS=${ETCD_ADDRESS}
-      - FUTRTALKENV_ETCD_ROOTDIRECTORY=${ETCD_ROOTDIRECTORY}
-      - FUTRTALKENV_SUPER_ADMIN=${SUPER_ADMIN}
+      - FUTRTALKENV_EMAIL_POOL_SIZE=${EMAIL_POOL_SIZE}
     networks:
       - futrtalkIM
     depends_on:
@@ -316,15 +321,15 @@ services:
       - redis
       - kafka
       - minio
-  
+
   futrtalk-dashboard:
-    image: ${FUTRTALK_DASHBOARD_IMAGE}
+    image: xiaoyuan001/futrtalk_dashboard:latest
     logging: *default-logging
     container_name: futrtalk-dashboard
     environment:
-      - FUTRTALK_API_URL=${FUTRTALK_API_URL}
-      - FUTRTALK_IM_API_URL=${FUTRTALK_IM_API_URL}
-      - FUTRTALK_IM_WS_URL=${FUTRTALK_IM_WS_URL}
+      - FUTRTALK_API_URL=${HTTP_TYPE}://api.${HOST_DOMAIN}
+      - FUTRTALK_IM_API_URL=${HTTP_TYPE}://im.${HOST_DOMAIN}
+      - FUTRTALK_IM_WS_URL=wss://ws.${HOST_DOMAIN}
     restart: always
     networks:
       - futrtalkIM
@@ -359,7 +364,7 @@ services:
       - "./certbot/docker-entrypoint.sh:/docker-entrypoint.sh"
     environment:
       - CERTBOT_EMAIL=${CERTBOT_EMAIL}
-      - CERTBOT_DOMAIN=${CERTBOT_DOMAIN}
+      - CERTBOT_DOMAIN=${HOST_DOMAIN}
       - CERTBOT_OPTIONS=${CERTBOT_OPTIONS:-}
     entrypoint: ['/docker-entrypoint.sh']
     command: ['tail', '-f', '/dev/null']
@@ -389,14 +394,14 @@ services:
         "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
       ]
     environment:
-      NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
+      NGINX_SERVER_NAME: ${HOST_DOMAIN:-_}
       NGINX_HTTPS_ENABLED: ${NGINX_HTTPS_ENABLED:-false}
       NGINX_SSL_PORT: ${NGINX_SSL_PORT:-443}
       NGINX_PORT: ${NGINX_PORT:-80}
       # You're required to add your own SSL certificates/keys to the `./nginx/ssl` directory
       # and modify the env vars below in .env if HTTPS_ENABLED is true.
-      NGINX_SSL_CERT_FILENAME: ${NGINX_SSL_CERT_FILENAME:-dify.crt}
-      NGINX_SSL_CERT_KEY_FILENAME: ${NGINX_SSL_CERT_KEY_FILENAME:-dify.key}
+      NGINX_SSL_CERT_FILENAME: fullchain.pem
+      NGINX_SSL_CERT_KEY_FILENAME: privkey.pem
       NGINX_SSL_PROTOCOLS: ${NGINX_SSL_PROTOCOLS:-TLSv1.1 TLSv1.2 TLSv1.3}
       NGINX_WORKER_PROCESSES: ${NGINX_WORKER_PROCESSES:-auto}
       NGINX_CLIENT_MAX_BODY_SIZE: ${NGINX_CLIENT_MAX_BODY_SIZE:-15M}
@@ -404,7 +409,7 @@ services:
       NGINX_PROXY_READ_TIMEOUT: ${NGINX_PROXY_READ_TIMEOUT:-3600s}
       NGINX_PROXY_SEND_TIMEOUT: ${NGINX_PROXY_SEND_TIMEOUT:-3600s}
       NGINX_ENABLE_CERTBOT_CHALLENGE: ${NGINX_ENABLE_CERTBOT_CHALLENGE:-false}
-      CERTBOT_DOMAIN: ${CERTBOT_DOMAIN:-}
+      CERTBOT_DOMAIN: ${HOST_DOMAIN:-}
     ports:
       - '${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}'
       - '${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}'
