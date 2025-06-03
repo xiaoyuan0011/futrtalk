@@ -128,12 +128,6 @@ services:
       - FUTRTALKENV_EMAIL_POOL_SIZE=${EMAIL_POOL_SIZE}
     networks:
       - futrtalkIM
-    depends_on:
-      - mysql
-      - mongo
-      - redis
-      - kafka
-      - minio
 
   futrtalk-dashboard:
     image: xiaoyuan001/futrtalk_dashboard:latest
