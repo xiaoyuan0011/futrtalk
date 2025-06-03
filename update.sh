@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # 设置 compose 文件的下载地址（请根据实际情况替换）
-COMPOSE_URL="https://raw.githubusercontent.com/xiaoyuan0011/futrtalk/v1.0.0/docker-compose-update.yml"
+COMPOSE_URL="https://raw.githubusercontent.com/xiaoyuan0011/futrtalk/main/docker-compose-update.yml"
 COMPOSE_FILE="docker-compose-update.yml"
 
 # 获取当前脚本所在目录并进入
@@ -17,13 +17,11 @@ fi
 echo "✅ docker-compose-update.yml 已更新"
 
 echo "⬇️ 拉取最新镜像中..."
-docker compose -f "$COMPOSE_FILE" pull
+docker compose -f "$COMPOSE_FILE" --project-name futrtalk pull
 
-echo "🛑 停止旧容器..."
-docker compose -f "$COMPOSE_FILE" down
 
 echo "🚀 启动新容器..."
-docker compose -f "$COMPOSE_FILE" up -d
+docker compose -f "$COMPOSE_FILE" --project-name futrtalk up -d --force-recreate
 
 echo "🧹 清理无用镜像..."
 docker image prune -f
