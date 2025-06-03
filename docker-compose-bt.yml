@@ -1,0 +1,350 @@
+version: '3.8'
+
+x-logging:
+  &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+networks:
+  futrtalkIM:
+    driver: bridge
+
+services:
+  mysql:
+    image: mariadb:10.6
+    logging: *default-logging
+    container_name: futrtalk-mysql
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    restart: always
+    ports:
+      - "13306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${ROOT_PWD}
+      - MYSQL_DATABASE=fultrtalk
+      - MYSQL_USER=fultrtalk
+      - MYSQL_PASSWORD=${DB_PWD}
+    volumes:
+      - ./DATA/components/mysql:/var/lib/mysql
+      - /etc/localtime:/etc/localtime
+    networks:
+      - futrtalkIM
+
+  mongo:
+    image: mongo:6.0.2
+    logging: *default-logging
+    container_name: mongo
+    ports:
+      - "28017:27017"
+    command: ["/bin/bash", "-c", "/docker-entrypoint-initdb.d/mongo-init.sh; docker-entrypoint.sh mongod --wiredTigerCacheSizeGB 1 --auth"]
+    volumes:
+      - "./DATA/components/mongodb/data/db:/data/db"
+      - "./DATA/components/mongodb/data/logs:/data/logs"
+      - "./DATA/components/mongodb/data/conf:/etc/mongo"
+      - "./scripts/mongo-init.sh:/docker-entrypoint-initdb.d/mongo-init.sh:ro"
+    environment:
+      - TZ=Asia/Shanghai
+      - wiredTigerCacheSizeGB=1
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=${ROOT_PWD}
+      - MONGO_INITDB_DATABASE=fultrtalk
+      - MONGO_OPENIM_USERNAME=fultrtalk
+      - MONGO_OPENIM_PASSWORD=${DB_PWD}
+    restart: always
+    networks:
+      - futrtalkIM
+
+  redis:
+    image: redis:7.0.0
+    logging: *default-logging
+    container_name: redis
+    ports:
+      - "16379:6379"
+    volumes:
+      - "./DATA/components/redis/data:/data"
+      - "./DATA/components/redis/config/redis.conf:/usr/local/redis/config/redis.conf"
+    environment:
+      TZ: Asia/Shanghai
+    restart: always
+    sysctls:
+      net.core.somaxconn: 1024
+    command: [ "redis-server", "/usr/local/redis/config/redis.conf", "--requirepass", "${ROOT_PWD}", "--appendonly", "yes" ]
+    networks:
+      - futrtalkIM
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.13
+    logging: *default-logging
+    container_name: etcd
+    ports:
+      - "12379:2379"
+      - "12380:2380"
+    environment:
+      - ETCD_NAME=s1
+      - ETCD_DATA_DIR=/etcd-data
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_INITIAL_CLUSTER=s1=http://0.0.0.0:2380
+      - ETCD_INITIAL_CLUSTER_TOKEN=futrtalk
+      - ETCD_INITIAL_CLUSTER_STATE=new
+    restart: always
+    networks:
+      - futrtalkIM
+
+  kafka:
+    image: bitnami/kafka:3.5.1
+    logging: *default-logging
+    container_name: kafka
+    user: root
+    restart: always
+    ports:
+      - "19094:9094"
+    volumes:
+      - ./scripts/create-topic.sh:/opt/bitnami/kafka/create-topic.sh
+      - "./DATA/components/kafka:/bitnami/kafka"
+    command: >
+      bash -c "/opt/bitnami/scripts/kafka/run.sh & /opt/bitnami/kafka/create-topic.sh; wait"
+    environment:
+      TZ: Asia/Shanghai
+      KAFKA_CFG_NODE_ID: 0
+      KAFKA_CFG_PROCESS_ROLES: controller,broker
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 0@kafka:9093
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://kafka:9094
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,EXTERNAL:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+    networks:
+      - futrtalkIM
+
+  minio:
+    image: minio/minio:RELEASE.2024-01-11T07-46-16Z
+    logging: *default-logging
+    ports:
+      - "10005:9000"
+      - "10004:9090"
+    container_name: minio
+    volumes:
+      - "./DATA/components/mnt/data:/data"
+      - "./DATA/components/mnt/config:/root/.minio"
+    environment:
+      TZ: Asia/Shanghai
+      MINIO_ROOT_USER: "fultrtalk"
+      MINIO_ROOT_PASSWORD: "${DB_PWD}"
+    restart: always
+    command: minio server /data --console-address ':9090'
+    networks:
+      - futrtalkIM
+
+  prometheus:
+    image: prom/prometheus:v2.51.2 
+    logging: *default-logging
+    container_name: prometheus
+    hostname: prometheus
+    restart: always
+    ports:
+      - "19090:9090"
+    networks:
+      - futrtalkIM
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    logging: *default-logging
+    container_name: alertmanager
+    hostname: alertmanager
+    restart: always
+    ports:
+      - "19093:9093"
+    networks:
+      - futrtalkIM
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    logging: *default-logging
+    container_name: grafana
+    hostname: grafana
+    user: root
+    restart: always
+    ports:
+      - "14000:3000"
+    volumes:
+      - "./DATA/components/grafana:/var/lib/grafana"
+    environment:
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_SESSION_COOKIE_SAMESITE=none
+      - GF_SESSION_COOKIE_SECURE=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    networks:
+      - futrtalkIM
+
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    logging: *default-logging
+    container_name: node-exporter
+    hostname: node-exporter
+    restart: always
+    ports:
+      - "19100:9100"
+    networks:
+      - futrtalkIM
+
+  futrtalk-im-server:
+    image: sqzxcv/futrtalk_im_server:latest
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "30"
+    container_name: futrtalkim-server
+    ports:
+      - "10001:10001"
+      - "10002:10002"
+      - "10110:10110"
+      - "10120:10120"
+      - "10130:10130"
+      - "10140:10140"
+      - "10150:10150"
+      - "10160:10160"
+      - "10170:10170"
+      - "10180:10180"
+      - "10190:10190"
+    healthcheck:
+      test: [ "CMD", "sh", "-c", "mage check" ]
+      interval: 5s
+      timeout: 60s
+      retries: 10
+    environment:
+      - IMENV_MONGODB_ADDRESS=mongo:27017
+      - IMENV_MONGODB_DATABASE=fultrtalk
+      - IMENV_MONGODB_USERNAME=fultrtalk
+      - IMENV_MONGODB_PASSWORD=${DB_PWD}
+      - IMENV_KAFKA_ADDRESS=kafka:9094
+      - IMENV_DISCOVERY_ETCD_ROOTDIRECTORY=fultrtalk
+      - IMENV_DISCOVERY_ETCD_ADDRESS=etcd:2379
+      - IMENV_REDIS_ADDRESS=redis:6379
+      - IMENV_REDIS_PASSWORD=${ROOT_PWD}
+      - IMENV_MINIO_INTERNALADDRESS=minio:9000
+      - IMENV_MINIO_EXTERNALADDRESS=${HTTP_TYPE}://minio.${HOST_DOMAIN}
+      - IMENV_MINIO_ACCESSKEYID=fultrtalk
+      - IMENV_MINIO_SECRETACCESSKEY=${DB_PWD}
+      - IMENV_SHARE_IMADMINUSERID=futrtalk,fultrtalk_u_asdb_1,fultrtalk_u_asdb_2
+      - IMENV_SHARE_SECRET=${Super_PWD}
+      - IMENV_LOG_ISSTDOUT=true
+      - IMENV_LOG_REMAINLOGLEVEL=3
+      - IMENV_OPENIM_API_PROMETHEUS_GRAFANAURL=${HTTP_TYPE}://${HOST_DOMAIN}:14000
+      - IMENV_OPENIM_MSGGATEWAY_RPC_REGISTERIP=${RPC_REGISTER_IP}
+      - IMENV_OPENIM_PUSH_RPC_REGISTERIP=${RPC_REGISTER_IP}
+      - IMENV_OPENIM_RPC_AUTH_RPC_REGISTERIP=${RPC_REGISTER_IP}
+      - IMENV_OPENIM_RPC_CONVERSATION_RPC_REGISTERIP=${RPC_REGISTER_IP}
+      - IMENV_OPENIM_RPC_FRIEND_RPC_REGISTERIP=${RPC_REGISTER_IP}
+      - IMENV_OPENIM_RPC_GROUP_RPC_REGISTERIP=${RPC_REGISTER_IP}
+      - IMENV_OPENIM_RPC_MSG_RPC_REGISTERIP=${RPC_REGISTER_IP}
+      - IMENV_OPENIM_RPC_THIRD_RPC_REGISTERIP=${RPC_REGISTER_IP}
+      - IMENV_OPENIM_RPC_USER_RPC_REGISTERIP=${RPC_REGISTER_IP}
+      - IMENV_OPENIM_MSGGATEWAY_RPC_PORTS=10140
+      - IMENV_OPENIM_PUSH_RPC_PORTS=10170
+      - IMENV_OPENIM_RPC_AUTH_RPC_PORTS=10160
+      - IMENV_OPENIM_RPC_CONVERSATION_RPC_PORTS=10180
+      - IMENV_OPENIM_RPC_FRIEND_RPC_PORTS=10120
+      - IMENV_OPENIM_RPC_GROUP_RPC_PORTS=10150
+      - IMENV_OPENIM_RPC_MSG_RPC_PORTS=10130
+      - IMENV_OPENIM_RPC_THIRD_RPC_PORTS=10190
+      - IMENV_OPENIM_RPC_USER_RPC_PORTS=10110
+      - IMENV_WEBHOOKS_URL=${HTTP_TYPE}://api.${HOST_DOMAIN}/api/imcallback
+      - IMENV_WEBHOOKS_AFTERSENDGROUPMSG_ENABLE=true
+      - IMENV_WEBHOOKS_AFTERSENDGROUPMSG_TIMEOUT=20
+      - IMENV_NOTIFICATION_GROUPCREATED_ISSENDMSG=true
+      - IMENV_NOTIFICATION_GROUPCREATED_UNREADCOUNT=false
+      - IMENV_NOTIFICATION_GROUPINFOSETNAME_ISSENDMSG=false
+      - IMENV_WEBHOOKS_BEFOREOFFLINEPUSH_ENABLE=true
+      - IMENV_WEBHOOKS_BEFOREOFFLINEPUSH_TIMEOUT=20
+      - IMENV_OPENIM_MSGGATEWAY_MULTILOGINPOLICY=3
+    restart: always
+    depends_on:
+      - mysql
+      - mongo
+      - redis
+      - kafka
+      - minio
+    networks:
+      - futrtalkIM
+
+  
+  
+  futrtalk-server:
+    image: sqzxcv/futrtalk-server:latest
+    logging: *default-logging
+    container_name: futrtalk-server
+    ports:
+      - "10010:10010"  # 映射端口（可选）
+    restart: always
+    environment:
+      - FUTRTALKENV_MYSQL_IP=${MYSQL_IP}
+      - FUTRTALKENV_MYSQL_PORT=13306
+      - FUTRTALKENV_MYSQL_USERNAME=fultrtalk
+      - FUTRTALKENV_MYSQL_PASSWORD=${DB_PWD}
+      - FUTRTALKENV_MYSQL_DATABASE=fultrtalk
+      - FUTRTALKENV_REDIS_IP=${REDIS_IP}
+      - FUTRTALKENV_REDIS_PORT=16379
+      - FUTRTALKENV_REDIS_PASSWORD=${ROOT_PWD}
+      - FUTRTALKENV_REDIS_DATABASE=0
+      - FUTRTALKENV_MINIO_IP=${MINIO_IP}
+      - FUTRTALKENV_MINIO_PORT=10005
+      - FUTRTALKENV_MINIO_ACCESS_KEY_ID=fultrtalk
+      - FUTRTALKENV_MINIO_SECRET_ACCESS_KEY=${DB_PWD}
+      - FUTRTALKENV_MINIO_BUCKET=futrtalk
+      - FUTRTALKENV_MINIO_APP_BUCKET=futrtalkapp
+      - FUTRTALKENV_MINIO_LOCATION=us-east-1
+      - FUTRTALKENV_MINIO_PUBLIC_URL=${HTTP_TYPE}://minio.${HOST_DOMAIN}      
+      - FUTRTALKENV_OPENIM_SECRET=${Super_PWD}
+      - FUTRTALKENV_OPENIM_IP=${FUTRTALKIM_IP}
+      - FUTRTALKENV_OPENIM_API_PORT=10002
+      - FUTRTALKENV_OPENIM_PLATFORM_ID=5
+      - FUTRTALKENV_OPENIM_ADMIN_ID=futrtalk
+      - FUTRTALKENV_ETCD_ADDRESS=etcd:2379
+      - FUTRTALKENV_ETCD_ROOTDIRECTORY=fultrtalk
+      - FUTRTALKENV_SUPER_ADMIN=${SUPER_ADMIN}
+      - FUTRTALKENV_EMAIL_HOST=${EMAIL_SMTP_ADDRESS}
+      - FUTRTALKENV_EMAIL_PORT=${EMAIL_PORT}
+      - FUTRTALKENV_EMAIL_FROM=${EMAIL_SEND_ADDRESS}
+      - FUTRTALKENV_EMAIL_NICKNAME=${EMAIL_SEND_NICK_NAME}
+      - FUTRTALKENV_EMAIL_PASSWORD=${EMAL_STMP_PASSWORD}
+      - FUTRTALKENV_EMAIL_POOL_SIZE=${EMAIL_POOL_SIZE}
+    networks:
+      - futrtalkIM
+    depends_on:
+      - mysql
+      - mongo
+      - redis
+      - kafka
+      - minio
+
+  futrtalk-dashboard:
+    image: xiaoyuan001/futrtalk_dashboard:latest
+    logging: *default-logging
+    container_name: futrtalk-dashboard
+    environment:
+      - FUTRTALK_API_URL=${HTTP_TYPE}://api.${HOST_DOMAIN}
+      - FUTRTALK_IM_API_URL=${HTTP_TYPE}://im.${HOST_DOMAIN}
+      - FUTRTALK_IM_WS_URL=wss://ws.${HOST_DOMAIN}
+    restart: always
+    networks:
+      - futrtalkIM
+    ports:
+      - "8088:80"
+  futrtalk-web:
+    image: xiaoyuan001/futrtalk_web:latest
+    logging: *default-logging
+    container_name: futrtalk-web
+    environment:
+      - FUTRTALK_API_URL=${HTTP_TYPE}://api.${HOST_DOMAIN}
+      - FUTRTALK_IM_API_URL=${HTTP_TYPE}://im.${HOST_DOMAIN}
+      - FUTRTALK_IM_WS_URL=wss://ws.${HOST_DOMAIN}
+    restart: always
+    networks:
+      - futrtalkIM      
+    ports:
+      - "8089:80"
