@@ -84,16 +84,8 @@ services:
       - IMENV_WEBHOOKS_BEFOREOFFLINEPUSH_TIMEOUT=20
       - IMENV_OPENIM_MSGGATEWAY_MULTILOGINPOLICY=3
     restart: always
-    depends_on:
-      - mysql
-      - mongo
-      - redis
-      - kafka
-      - minio
     networks:
       - futrtalkIM
-
-  
   
   futrtalk-server:
     image: sqzxcv/futrtalk-server:latest
