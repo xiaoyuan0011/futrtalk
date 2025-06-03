@@ -1,14 +1,14 @@
 #!/bin/sh
 
-# 设置 compose 文件的下载地址
-COMPOSE_URL="https://raw.githubusercontent.com/xiaoyuan0011/futrtalk/main/docker-compose-update.yml"  
-COMPOSE_FILE="docker-compose-update.yml"
+# 设置 compose 文件的下载地址（请根据实际情况替换）
+COMPOSE_URL="https://raw.githubusercontent.com/xiaoyuan0011/futrtalk/main/docker-compose.yml"
+COMPOSE_FILE="docker-compose.yml"
 
-# 当前目录
+# 获取当前脚本所在目录并进入
 SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
 cd "$SCRIPT_DIR"
 
-echo "📥 正在下载最新 docker-compose-update.yml ..."
+echo "📥 正在下载最新 docker-compose.yml ..."
 wget -q -O "$COMPOSE_FILE" "$COMPOSE_URL"
 if [ $? -ne 0 ]; then
   echo "❌ 下载 docker-compose.yml 失败，请检查链接：$COMPOSE_URL"
