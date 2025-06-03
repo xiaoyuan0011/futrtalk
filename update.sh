@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # 设置 compose 文件的下载地址（请根据实际情况替换）
-COMPOSE_URL="https://raw.githubusercontent.com/xiaoyuan0011/futrtalk/main/docker-compose-update.yml"
+COMPOSE_URL="https://raw.githubusercontent.com/xiaoyuan0011/futrtalk/v1.0.0/docker-compose-update.yml"
 COMPOSE_FILE="docker-compose-update.yml"
 
 # 获取当前脚本所在目录并进入
