@@ -1,0 +1,171 @@
+version: '3.8'
+
+x-logging:
+  &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+networks:
+  futrtalkIM:
+    driver: bridge
+
+services:
+  futrtalk-im-server:
+    image: sqzxcv/futrtalk_im_server:latest
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "30"
+    container_name: futrtalkim-server
+    ports:
+      - "10001:10001"
+      - "10002:10002"
+      - "10110:10110"
+      - "10120:10120"
+      - "10130:10130"
+      - "10140:10140"
+      - "10150:10150"
+      - "10160:10160"
+      - "10170:10170"
+      - "10180:10180"
+      - "10190:10190"
+    healthcheck:
+      test: [ "CMD", "sh", "-c", "mage check" ]
+      interval: 5s
+      timeout: 60s
+      retries: 10
+    environment:
+      - IMENV_MONGODB_ADDRESS=mongo:27017
+      - IMENV_MONGODB_DATABASE=fultrtalk
+      - IMENV_MONGODB_USERNAME=fultrtalk
+      - IMENV_MONGODB_PASSWORD=${DB_PWD}
+      - IMENV_KAFKA_ADDRESS=kafka:9094
+      - IMENV_DISCOVERY_ETCD_ROOTDIRECTORY=fultrtalk
+      - IMENV_DISCOVERY_ETCD_ADDRESS=etcd:2379
+      - IMENV_REDIS_ADDRESS=redis:6379
+      - IMENV_REDIS_PASSWORD=${ROOT_PWD}
+      - IMENV_MINIO_INTERNALADDRESS=minio:9000
+      - IMENV_MINIO_EXTERNALADDRESS=${HTTP_TYPE}://minio.${HOST_DOMAIN}
+      - IMENV_MINIO_ACCESSKEYID=fultrtalk
+      - IMENV_MINIO_SECRETACCESSKEY=${DB_PWD}
+      - IMENV_SHARE_IMADMINUSERID=futrtalk,fultrtalk_u_asdb_1,fultrtalk_u_asdb_2
+      - IMENV_SHARE_SECRET=${Super_PWD}
+      - IMENV_LOG_ISSTDOUT=true
+      - IMENV_LOG_REMAINLOGLEVEL=3
+      - IMENV_OPENIM_API_PROMETHEUS_GRAFANAURL=${HTTP_TYPE}://${HOST_DOMAIN}:14000
+      - IMENV_OPENIM_MSGGATEWAY_RPC_REGISTERIP=${RPC_REGISTER_IP}
+      - IMENV_OPENIM_PUSH_RPC_REGISTERIP=${RPC_REGISTER_IP}
+      - IMENV_OPENIM_RPC_AUTH_RPC_REGISTERIP=${RPC_REGISTER_IP}
+      - IMENV_OPENIM_RPC_CONVERSATION_RPC_REGISTERIP=${RPC_REGISTER_IP}
+      - IMENV_OPENIM_RPC_FRIEND_RPC_REGISTERIP=${RPC_REGISTER_IP}
+      - IMENV_OPENIM_RPC_GROUP_RPC_REGISTERIP=${RPC_REGISTER_IP}
+      - IMENV_OPENIM_RPC_MSG_RPC_REGISTERIP=${RPC_REGISTER_IP}
+      - IMENV_OPENIM_RPC_THIRD_RPC_REGISTERIP=${RPC_REGISTER_IP}
+      - IMENV_OPENIM_RPC_USER_RPC_REGISTERIP=${RPC_REGISTER_IP}
+      - IMENV_OPENIM_MSGGATEWAY_RPC_PORTS=10140
+      - IMENV_OPENIM_PUSH_RPC_PORTS=10170
+      - IMENV_OPENIM_RPC_AUTH_RPC_PORTS=10160
+      - IMENV_OPENIM_RPC_CONVERSATION_RPC_PORTS=10180
+      - IMENV_OPENIM_RPC_FRIEND_RPC_PORTS=10120
+      - IMENV_OPENIM_RPC_GROUP_RPC_PORTS=10150
+      - IMENV_OPENIM_RPC_MSG_RPC_PORTS=10130
+      - IMENV_OPENIM_RPC_THIRD_RPC_PORTS=10190
+      - IMENV_OPENIM_RPC_USER_RPC_PORTS=10110
+      - IMENV_WEBHOOKS_URL=${HTTP_TYPE}://api.${HOST_DOMAIN}/api/imcallback
+      - IMENV_WEBHOOKS_AFTERSENDGROUPMSG_ENABLE=true
+      - IMENV_WEBHOOKS_AFTERSENDGROUPMSG_TIMEOUT=20
+      - IMENV_NOTIFICATION_GROUPCREATED_ISSENDMSG=true
+      - IMENV_NOTIFICATION_GROUPCREATED_UNREADCOUNT=false
+      - IMENV_NOTIFICATION_GROUPINFOSETNAME_ISSENDMSG=false
+      - IMENV_WEBHOOKS_BEFOREOFFLINEPUSH_ENABLE=true
+      - IMENV_WEBHOOKS_BEFOREOFFLINEPUSH_TIMEOUT=20
+      - IMENV_OPENIM_MSGGATEWAY_MULTILOGINPOLICY=3
+    restart: always
+    depends_on:
+      - mysql
+      - mongo
+      - redis
+      - kafka
+      - minio
+    networks:
+      - futrtalkIM
+
+  
+  
+  futrtalk-server:
+    image: sqzxcv/futrtalk-server:latest
+    logging: *default-logging
+    container_name: futrtalk-server
+    ports:
+      - "10010:10010"  # 映射端口（可选）
+    restart: always
+    environment:
+      - FUTRTALKENV_MYSQL_IP=${MYSQL_IP}
+      - FUTRTALKENV_MYSQL_PORT=13306
+      - FUTRTALKENV_MYSQL_USERNAME=fultrtalk
+      - FUTRTALKENV_MYSQL_PASSWORD=${DB_PWD}
+      - FUTRTALKENV_MYSQL_DATABASE=fultrtalk
+      - FUTRTALKENV_REDIS_IP=${REDIS_IP}
+      - FUTRTALKENV_REDIS_PORT=16379
+      - FUTRTALKENV_REDIS_PASSWORD=${ROOT_PWD}
+      - FUTRTALKENV_REDIS_DATABASE=0
+      - FUTRTALKENV_MINIO_IP=${MINIO_IP}
+      - FUTRTALKENV_MINIO_PORT=10005
+      - FUTRTALKENV_MINIO_ACCESS_KEY_ID=fultrtalk
+      - FUTRTALKENV_MINIO_SECRET_ACCESS_KEY=${DB_PWD}
+      - FUTRTALKENV_MINIO_BUCKET=futrtalk
+      - FUTRTALKENV_MINIO_APP_BUCKET=futrtalkapp
+      - FUTRTALKENV_MINIO_LOCATION=us-east-1
+      - FUTRTALKENV_MINIO_PUBLIC_URL=${HTTP_TYPE}://minio.${HOST_DOMAIN}      
+      - FUTRTALKENV_OPENIM_SECRET=${Super_PWD}
+      - FUTRTALKENV_OPENIM_IP=${FUTRTALKIM_IP}
+      - FUTRTALKENV_OPENIM_API_PORT=10002
+      - FUTRTALKENV_OPENIM_PLATFORM_ID=5
+      - FUTRTALKENV_OPENIM_ADMIN_ID=futrtalk
+      - FUTRTALKENV_ETCD_ADDRESS=etcd:2379
+      - FUTRTALKENV_ETCD_ROOTDIRECTORY=fultrtalk
+      - FUTRTALKENV_SUPER_ADMIN=${SUPER_ADMIN}
+      - FUTRTALKENV_EMAIL_HOST=${EMAIL_SMTP_ADDRESS}
+      - FUTRTALKENV_EMAIL_PORT=${EMAIL_PORT}
+      - FUTRTALKENV_EMAIL_FROM=${EMAIL_SEND_ADDRESS}
+      - FUTRTALKENV_EMAIL_NICKNAME=${EMAIL_SEND_NICK_NAME}
+      - FUTRTALKENV_EMAIL_PASSWORD=${EMAL_STMP_PASSWORD}
+      - FUTRTALKENV_EMAIL_POOL_SIZE=${EMAIL_POOL_SIZE}
+    networks:
+      - futrtalkIM
+    depends_on:
+      - mysql
+      - mongo
+      - redis
+      - kafka
+      - minio
+
+  futrtalk-dashboard:
+    image: xiaoyuan001/futrtalk_dashboard:latest
+    logging: *default-logging
+    container_name: futrtalk-dashboard
+    environment:
+      - FUTRTALK_API_URL=${HTTP_TYPE}://api.${HOST_DOMAIN}
+      - FUTRTALK_IM_API_URL=${HTTP_TYPE}://im.${HOST_DOMAIN}
+      - FUTRTALK_IM_WS_URL=wss://ws.${HOST_DOMAIN}
+    restart: always
+    networks:
+      - futrtalkIM
+    ports:
+      - "8088:80"
+  futrtalk-web:
+    image: xiaoyuan001/futrtalk_web:latest
+    logging: *default-logging
+    container_name: futrtalk-web
+    environment:
+      - FUTRTALK_API_URL=${HTTP_TYPE}://api.${HOST_DOMAIN}
+      - FUTRTALK_IM_API_URL=${HTTP_TYPE}://im.${HOST_DOMAIN}
+      - FUTRTALK_IM_WS_URL=wss://ws.${HOST_DOMAIN}
+    restart: always
+    networks:
+      - futrtalkIM      
+    ports:
+      - "8089:80"
